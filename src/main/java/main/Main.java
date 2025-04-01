@@ -1,10 +1,8 @@
 package main;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
-
-import com.opencsv.exceptions.CsvValidationException;
 
 import main.utils.Compactor;
 import main.utils.Converter;
@@ -19,55 +17,45 @@ public class Main {
 
 		final String basePath = "C:\\PDFs";
 
-		final String docsZipPath = basePath + "\\Anexos.zip";
+		final String docsZipPath = Paths.get(basePath, "Anexos.zip").toString();
 		final String pdfFileName = "Anexo_I_Rol_2021RN_465.2021_RN627L.2024.pdf";
-		final String docToExtractPath = basePath + "\\" + pdfFileName;
+		final String docToExtractPath = Paths.get(basePath, pdfFileName).toString();
 
 		final String csvFileName = "Teste_Raphael_Muniz_Varela.csv";
-		final String csvPath = basePath + "\\" + csvFileName;
-		final String csvZipPath = basePath + "\\Teste_Raphael_Muniz_Varela.zip";
+		final String csvPath = Paths.get(basePath, csvFileName).toString();
+		final String csvZipPath = Paths.get(basePath, "Teste_Raphael_Muniz_Varela.zip").toString();
 
 		final int docStartPage = 3;
 
-		try {
-			System.out.println("Início do processo de extração do arquivo PDF...");
-			FileHandler.extractFile(docsZipPath, pdfFileName, basePath);
-			System.out.println("Arquivo PDF extraído com sucesso!");
-		} catch (IOException e) {
-			System.err.println("Erro ao extrair arquivo: " + e.getMessage());
-		}
+		// Extrai o PDF 'Anexo I' do ZIP
+		FileHandler.extractFile(docsZipPath, pdfFileName, basePath);
 
-		try {
-			System.out.println("Início do processo de extração de dados do arquivo PDF...");
-			List<Table> tables = TableExtractor.extractTableFromPDF(docToExtractPath, docStartPage);
-			Converter.convertTableToCsv(tables, csvPath);
-			System.out.println("Extração concluída com sucesso!");
-		} catch (IOException e) {
-			System.err.println("Erro durante a extração: " + e.getMessage());
-		}
+		// Extrai os dados da tabela do 'Anexo I'
+		List<Table> pdfTables = TableExtractor.extractTableFromPDF(docToExtractPath, docStartPage);
 
-		Compactor csvCompactor = new Compactor(csvZipPath);
-		File csvFile = FileHandler.getCsvFile(csvPath);
-		csvCompactor.addFileToZipFolder(csvFile);
+		// Converte os dados da tabela para o modelo CSV
+		Converter.convertTableToCsv(pdfTables, csvPath);
+
+		// Captura o arquivo CSV
+		File csvFile = FileHandler.getFileWithExtension(csvPath, ".csv");
+
+		// Transfere o CSV para o ZIP
+		Compactor.addFileToZipFolder(csvFile, csvZipPath);
+
+		// Deleta a cópia do 'Anexo I'
 		FileHandler.deleteFile(docToExtractPath);
 
-		try {
-			System.out.println("Início do processo de extração do arquivo CSV...");
-			FileHandler.extractFile(csvZipPath, csvFileName, basePath);
-			System.out.println("Arquivo CSV extraído com sucesso!");
-		} catch (IOException e) {
-			System.err.println("Erro ao extrair arquivo: " + e.getMessage());
-		}
+		// Extrai o CSV do ZIP
+		FileHandler.extractFile(csvZipPath, csvFileName, basePath);
 
-		try {
-			CsvHandler.updateCSV(csvPath);
-			File newCsvFile = FileHandler.getCsvFile(csvPath);
-			csvCompactor.addFileToZipFolder(newCsvFile);
-		} catch (IOException e) {
-			System.err.println("Erro ao atualizar o arquivo CSV: " + e.getMessage());
-		} catch (CsvValidationException e) {
-			System.err.println("Erro ao atualizar o arquivo CSV: " + e.getMessage());
-		}
+		// Atualiza o header do CSV
+		CsvHandler.updateCSV(csvPath);
+
+		// Captura o arquivo CSV
+		File newCsvFile = FileHandler.getFileWithExtension(csvPath, ".csv");
+
+		// Transfere o CSV para o ZIP
+		Compactor.addFileToZipFolder(newCsvFile, csvZipPath);
 
 		System.out.println("Finalizando processo de automação.");
 	}
